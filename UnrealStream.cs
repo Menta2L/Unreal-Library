@@ -82,7 +82,6 @@ namespace UELib
         long LastPosition{ get; set; }
         int Read( byte[] array, int offset, int count );
         long Seek( long offset, SeekOrigin origin );
-        bool IsLineage { get; }
     }
 
     public class UnrealWriter : BinaryWriter
@@ -157,13 +156,16 @@ namespace UELib
             _UnrealStream = stream as IUnrealStream;
             _MyEncoding = enc;
         }
-
+        public override byte ReadByte()
+        {
+            return _UnrealStream.ReadByte();
+        }
         public string ReadText()
         {
 #if DEBUG || BINARYMETADATA
             var lastPosition = _UnrealStream.Position;
 #endif
-            if (_UnrealStream.IsLineage)
+            if (_UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Lineage2)
             {
                 var nameLength = ReadByte();
                 var bytes = ReadBytes(nameLength);
@@ -383,10 +385,7 @@ namespace UELib
             var g = new Guid( guidBuffer );
             return g.ToString();
         }
-        public override byte ReadByte()
-        {
-            return _UnrealStream.ReadByte();
-        }
+
         protected override void Dispose( bool disposing )
         {
             base.Dispose( disposing );
@@ -399,7 +398,7 @@ namespace UELib
 
     public class UPackageStream : FileStream, IUnrealStream
     {
-        public UnrealPackage Package{ get; set; }
+        public UnrealPackage Package{ get; private set; }
 
         /// <inheritdoc/>
         public uint Version
@@ -414,83 +413,14 @@ namespace UELib
 
         public bool BigEndianCode{ get; set; }
         public bool IsChunked{ get{ return Package.CompressedChunks != null && Package.CompressedChunks.Any(); } }
-        private bool _IsLineage = false;
 
-        public bool IsLineage
-        {
-            get { return _IsLineage; }
-        }
-        private byte m_LineageKey = 0;
         public UPackageStream( string path, FileMode mode, FileAccess access ) : base( path, mode, access, FileShare.ReadWrite )
         {
             UR = null;
             UW = null;
-            if( CanRead && mode == FileMode.Open )
-            {
-                byte[] m_Data = new byte[22];
-                Read(m_Data, 0, 22);
-                string result = Encoding.Unicode.GetString(m_Data);
-                if (result != "Lineage2Ver")
-                {
-                    Position = 0;
-                }
-                else
-                {
-                    m_Data = new byte[6];
-                    Read(m_Data, 0, 6);
-                    string archive_version = Encoding.Unicode.GetString(m_Data);
-                    switch (archive_version)
-                    {
-                        case "111": m_LineageKey = 0xAC; break;
-                        case "121":
-
-                            string filename = Path.GetFileName(path).ToLower();
-                            int ind = 0;
-                            for (int i = 0; i < filename.Length; i++)
-                            {
-                                ind += filename[i];
-                            }
-                            int xb = ind & 0xFF;
-
-                            this.m_LineageKey = (byte)(xb | xb << 8 | xb << 16 | xb << 24);
-
-                            break;
-                        default:
-                            throw new System.IO.IOException(String.Format("Unsupported version {0}", archive_version));
-                    }
-                    _IsLineage = true;
-                }
-                var bytes = new byte[4];
-                Read( bytes, 0, 4 );
-                uint readSignature = BitConverter.ToUInt32( bytes, 0 );
-                if( readSignature == UnrealPackage.Signature_BigEndian )
-                {
-                    Console.WriteLine( "Encoding:BigEndian" );
-                    BigEndianCode = true;
-                }
-
-                if( !UnrealConfig.SuppressSignature
-                    && readSignature != UnrealPackage.Signature
-                    && readSignature != UnrealPackage.Signature_BigEndian )
-                {
-                    throw new FileLoadException( path + " isn't a UnrealPackage file!" );
-                }
-                //Position = 4;
-            }
-
             InitBuffer();
         }
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            if (origin == SeekOrigin.Begin && _IsLineage)
-            {
-                return base.Seek(offset + 28, origin);
-            }
-            else
-            {
-                return base.Seek(offset, origin);
-            }
-        }
+
         public void InitBuffer()
         {
             if( CanRead && UR == null )
@@ -504,24 +434,62 @@ namespace UELib
             }
         }
 
+        public void PostInit( UnrealPackage package )
+        {
+            Package = package;
+
+            if( !CanRead )
+                return;
+
+            if( package.Decoder != null )
+            {
+                package.Decoder.PreDecode( this );
+            }
+
+            var bytes = new byte[4];
+            Read( bytes, 0, 4 );
+            var readSignature = BitConverter.ToUInt32( bytes, 0 );
+            if( readSignature == UnrealPackage.Signature_BigEndian )
+            {
+                Console.WriteLine( "Encoding:BigEndian" );
+                BigEndianCode = true;
+            }
+
+            if( !UnrealConfig.SuppressSignature
+                && readSignature != UnrealPackage.Signature
+                && readSignature != UnrealPackage.Signature_BigEndian )
+            {
+                throw new FileLoadException( package.PackageName + " isn't an UnrealPackage!" );
+            }
+            Position = 4;
+        }
+
+        /// <summary>
+        /// Called as soon the build for @Package is detected.
+        /// </summary>
+        /// <param name="build"></param>
+        public void BuildDetected( UnrealPackage.GameBuild build )
+        {
+            if( Package.Decoder != null )
+            {
+                Package.Decoder.DecodeBuild( this, build );
+            }
+        }
+
         public override int Read( byte[] array, int offset, int count )
         {
 #if DEBUG || BINARYMETADATA
             LastPosition = Position;
 #endif
-            int r = base.Read( array, offset, count );
+            var r = base.Read( array, offset, count );
             if( BigEndianCode && r > 1 )
             {
                 Array.Reverse( array, 0, r );
             }
-            if (_IsLineage)
-            {
-                for (int i = offset; i < r; i++)
-                {
-                    array[i] = (byte)(array[i] ^ m_LineageKey);
-                }
-            }
-            return r;
+            // Give the decoder a chance to modify the read output.
+            return (Package != null && Package.Decoder != null)
+                ? Package.Decoder.DecodeRead( array, offset, count )
+                : r;
         }
 
         /// <summary>
@@ -549,12 +517,9 @@ namespace UELib
             LastPosition = Position;
 #endif
             byte b = (byte)base.ReadByte();
-            if (_IsLineage)
-            {
-                return (byte)(b ^ m_LineageKey);
-            }
-
-            return b;
+            return (Package != null && Package.Decoder != null)
+               ? Package.Decoder.DecodeByte(b)
+               : b;
         }
 
         /// <summary>
@@ -737,17 +702,17 @@ namespace UELib
             get
             {
 
-                if (_IsLineage)
+                if (Package.Decoder != null)
                 {
-                    return base.Position - 28;
+                    return base.Position - Package.Decoder.PositionOffset;
                 }
                 return base.Position;
             }
             set
             {
-                if (_IsLineage)
+                if (Package.Decoder != null)
                 {
-                    base.Position = value + 28;
+                    base.Position = value + Package.Decoder.PositionOffset;
                 }
                 else
                 {
@@ -767,7 +732,6 @@ namespace UELib
 
     public class UObjectStream : MemoryStream, IUnrealStream
     {
-        public bool IsLineage { get { return false; } }
         public string Name{ get{ return Package.Stream.Name; } }
         /// <summary>
         /// The package I am streaming for.
@@ -856,7 +820,7 @@ namespace UELib
 #if DEBUG || BINARYMETADATA
             LastPosition = Position;
 #endif
-            return (byte)base.ReadByte();
+            return UR.ReadByte();
         }
 
         /// <summary>
