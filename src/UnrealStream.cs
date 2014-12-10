@@ -156,12 +156,21 @@ namespace UELib
             _UnrealStream = stream as IUnrealStream;
             _MyEncoding = enc;
         }
-
+        public override byte ReadByte()
+        {
+            return _UnrealStream.ReadByte();
+        }
         public string ReadText()
         {
 #if DEBUG || BINARYMETADATA
             var lastPosition = _UnrealStream.Position;
 #endif
+            if (_UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Lineage2)
+            {
+                var nameLength = ReadByte();
+                var bytes = ReadBytes(nameLength);
+                return new string(Encoding.UTF8.GetChars(bytes)).Trim('\0');
+            }
             if( _Version < UnrealPackage.VSIZEPREFIXDEPRECATED )
             {
                 return ReadAnsi();
@@ -507,7 +516,10 @@ namespace UELib
 #if DEBUG || BINARYMETADATA
             LastPosition = Position;
 #endif
-            return UR.ReadByte();
+            byte b = (byte)base.ReadByte();
+            return (Package != null && Package.Decoder != null)
+               ? Package.Decoder.DecodeByte(b)
+               : b;
         }
 
         /// <summary>
@@ -685,7 +697,29 @@ namespace UELib
         {
             Position += bytes;
         }
+        public override long Position
+        {
+            get
+            {
 
+                if (Package.Decoder != null)
+                {
+                    return base.Position - Package.Decoder.PositionOffset;
+                }
+                return base.Position;
+            }
+            set
+            {
+                if (Package.Decoder != null)
+                {
+                    base.Position = value + Package.Decoder.PositionOffset;
+                }
+                else
+                {
+                    base.Position = value;
+                }
+            }
+        }
         protected override void Dispose( bool disposing )
         {
             if( !disposing )

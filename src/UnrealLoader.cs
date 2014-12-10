@@ -35,7 +35,8 @@ namespace UELib
         public static UnrealPackage LoadPackage( string packagePath, IBufferDecoder decoder = null, FileAccess fileAccess = FileAccess.Read )
         {
             var stream = new UPackageStream( packagePath, FileMode.Open, fileAccess );
-            var package = new UnrealPackage( stream ) {Decoder = decoder};
+            var package = new UnrealPackage(stream, decoder);
+           // var package = new UnrealPackage( stream ) {Decoder = decoder};
             package.Deserialize( stream );
             return package;
         }

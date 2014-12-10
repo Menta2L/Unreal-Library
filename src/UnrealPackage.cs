@@ -258,6 +258,8 @@ namespace UELib
                 [Build( 110, 2609 )]
                 Unreal2,
 
+                [Build(130, 40)]
+                Lineage2,
                 /// <summary>
                 /// 118/025:029
                 /// </summary>
@@ -749,6 +751,18 @@ namespace UELib
             return pkg;
         }
 
+        public UnrealPackage(UPackageStream stream,IBufferDecoder decoder)
+        {
+            Decoder = decoder;
+            _FullPackageName = stream.Name;
+            Stream = stream;
+            Stream.PostInit(this);
+
+            // File Type
+            // Signature is tested in UPackageStream
+            IsBigEndianEncoded = stream.BigEndianCode;
+        }
+
         /// <summary>
         /// Creates a new instance of the UELib.UnrealPackage class with a PackageStream and name.
         /// </summary>
@@ -1024,8 +1038,7 @@ namespace UELib
             if( _TablesData.NamesCount > 0 )
             {
                 Console.WriteLine( "P: " + stream.Position + " NP: " + _TablesData.NamesOffset );
-
-                stream.Seek( _TablesData.NamesOffset, SeekOrigin.Begin );
+                stream.Position = _TablesData.NamesOffset;
                 Names = new List<UNameTableItem>( (int)_TablesData.NamesCount );
                 for( var i = 0; i < _TablesData.NamesCount; ++ i )
                 {
@@ -1041,8 +1054,7 @@ namespace UELib
             if( _TablesData.ImportsCount > 0 )
             {
                 Console.WriteLine( "P: " + stream.Position + " IP: " + _TablesData.ImportsOffset );
-
-                stream.Seek( _TablesData.ImportsOffset, SeekOrigin.Begin );
+                stream.Position = _TablesData.ImportsOffset;
                 Imports = new List<UImportTableItem>( (int)_TablesData.ImportsCount );
                 for( var i = 0; i < _TablesData.ImportsCount; ++ i )
                 {
@@ -1058,8 +1070,7 @@ namespace UELib
             if( _TablesData.ExportsCount > 0 )
             {
                 Console.WriteLine( "P: " + stream.Position + " EP: " + _TablesData.ExportsOffset );
-
-                stream.Seek( _TablesData.ExportsOffset, SeekOrigin.Begin );
+                stream.Position = _TablesData.ExportsOffset;
                 Exports = new List<UExportTableItem>( (int)_TablesData.ExportsCount );
                 for( var i = 0; i < _TablesData.ExportsCount; ++ i )
                 {
