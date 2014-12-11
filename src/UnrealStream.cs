@@ -697,28 +697,13 @@ namespace UELib
         {
             Position += bytes;
         }
-        public override long Position
+        public override long Seek(long offset, SeekOrigin origin)
         {
-            get
+            if (origin == SeekOrigin.Begin && Package.Decoder != null)
             {
-
-                if (Package.Decoder != null)
-                {
-                    return base.Position - Package.Decoder.PositionOffset;
-                }
-                return base.Position;
+                return base.Seek(offset + Package.Decoder.PositionOffset, origin);
             }
-            set
-            {
-                if (Package.Decoder != null)
-                {
-                    base.Position = value + Package.Decoder.PositionOffset;
-                }
-                else
-                {
-                    base.Position = value;
-                }
-            }
+            return base.Seek(offset, origin);
         }
         protected override void Dispose( bool disposing )
         {
