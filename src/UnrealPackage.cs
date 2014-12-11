@@ -258,7 +258,7 @@ namespace UELib
                 [Build( 110, 2609 )]
                 Unreal2,
 
-                [Build(130, 40)]
+                [Build(127, 130,39u,40u)]
                 Lineage2,
                 /// <summary>
                 /// 118/025:029
