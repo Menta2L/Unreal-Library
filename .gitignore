@@ -1,1 +1,5 @@
 *.nupkg
+Eliot.UELib.csproj
+Eliot.UELib.v12.suo
+obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
+Eliot.UELib.csproj
