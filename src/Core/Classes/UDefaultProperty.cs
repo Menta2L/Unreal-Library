@@ -56,7 +56,7 @@ namespace UELib.Core
         /// <summary>
         /// See PropertysType enum in UnrealFlags.cs
         /// </summary>
-        private PropertyType        Type{ get; set; }
+        public PropertyType        Type{ get; set; }
 
         /// <summary>
         /// The stream size of this DefaultProperty.

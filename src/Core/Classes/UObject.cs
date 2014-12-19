@@ -162,7 +162,7 @@ namespace UELib.Core
                 _Buffer.InitBuffer();
                 return;
             }
-
+            //size = {value=699571 }
             var buff = new byte[ExportTable.SerialSize];
             Package.Stream.Seek( ExportTable.SerialOffset, SeekOrigin.Begin );
             Package.Stream.Read( buff, 0, ExportTable.SerialSize );

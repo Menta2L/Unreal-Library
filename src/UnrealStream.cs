@@ -167,7 +167,8 @@ namespace UELib
 #endif
             if (_UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Lineage2)
             {
-                var nameLength = ReadByte();
+                //var nameLength = ReadByte();
+                var nameLength = ReadIndex();
                 var bytes = ReadBytes(nameLength);
                 return new string(Encoding.UTF8.GetChars(bytes)).Trim('\0');
             }
@@ -805,7 +806,8 @@ namespace UELib
 #if DEBUG || BINARYMETADATA
             LastPosition = Position;
 #endif
-            return UR.ReadByte();
+            return (byte)base.ReadByte();
+            //return UR.ReadByte();
         }
 
         /// <summary>

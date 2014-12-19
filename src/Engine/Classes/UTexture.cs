@@ -1,13 +1,31 @@
 ﻿using System;
 using UELib.Core;
+using UELib;
 
 namespace UELib.Engine
 {
-    [UnrealRegisterClass]
-    public class UTexture : UObject, IUnrealViewable
+    public enum ETextureFormat
     {
-        protected UDefaultProperty _Format;
-
+        TEXF_P8,			// used 8-bit palette
+        TEXF_RGBA7,
+        TEXF_RGB16,			// 16-bit texture
+        TEXF_DXT1,
+        TEXF_RGB8,
+        TEXF_RGBA8,			// 32-bit texture
+        TEXF_NODATA,
+        TEXF_DXT3,
+        TEXF_DXT5,
+        TEXF_L8,			// 8-bit grayscale
+        TEXF_G16,			// 16-bit grayscale (terrain heightmaps)
+        TEXF_RRRGGGBBB,
+        // Tribes texture formats
+        TEXF_CxV8U8,
+        TEXF_DXT5N,			// Note: in Bioshock this value has name 3DC, but really DXT5N is used
+        TEXF_3DC,			// BC5 compression
+    };
+    [UnrealRegisterClass]
+    public class UTexture : UBitmapMaterial, IUnrealViewable
+    {
         public UArray<MipMap> MipMaps{ get; private set; }
 
         public UTexture()
@@ -18,8 +36,6 @@ namespace UELib.Engine
         protected override void Deserialize()
         {
             base.Deserialize();
-
-            _Format = Properties.Find( "Format" );
             MipMaps = new UArray<MipMap>();
             MipMaps.Deserialize( _Buffer, delegate( MipMap mm ){ mm.Owner = this; } );
         }
@@ -34,7 +50,7 @@ namespace UELib.Engine
             public UTexture Owner;
 
             public uint WidthOffset;
-            public int[] Pixels;
+            public byte[] Pixels;
             public uint Width;
             public uint Height;
             public byte BitsWidth;
@@ -47,45 +63,13 @@ namespace UELib.Engine
 
             public void Deserialize( IUnrealStream stream )
             {
-                if( stream.Version >= 63 )
-                {
-                    // Offset to (Width = ...)
-                    WidthOffset = stream.ReadUInt32();
-
-                    long opos = stream.Position;
-                    stream.Seek( WidthOffset, System.IO.SeekOrigin.Begin );
-                    Width = stream.ReadUInt32();
-                    Height = stream.ReadUInt32();
-                    stream.Seek( opos, System.IO.SeekOrigin.Begin );
-                }
-
+                
+                stream.ReadUInt32();
                 int mipMapSize = stream.ReadIndex();
-                Pixels = new int[mipMapSize];
-                switch( Owner._Format.Decompile().Substring( 6 ) )
-                {
-                    case "TEXF_RGBA8": case "5":
-                        for( int i = 0; i < mipMapSize; ++ i )
-                        {
-                            Pixels[i] = stream.ReadInt32();
-                        }
-                        break;
-
-                    case "TEXF_DXT1": case "3":
-                        for( int i = 0; i < mipMapSize / 2; ++ i )
-                        {
-                            byte c = stream.ReadByte();
-                            Pixels[i ++] = c & 0xF0;
-                            Pixels[i] = c & 0x0F;
-                        }
-
-                        // PostProcess:
-                        // 4x4 4bit per pixel, 16bit per color: 5bits red; 6bits green; 5bits blue.
-                        //
-                        break;
-                }
-
-                // Width, Height. See above!
-                stream.Skip( 8 );
+                Pixels = new byte[mipMapSize];
+                stream.Read(Pixels, 0, mipMapSize);
+                Width = stream.ReadUInt32();
+                Height = stream.ReadUInt32();
                 BitsWidth = stream.ReadByte();
                 BitsHeight = stream.ReadByte();
             }
