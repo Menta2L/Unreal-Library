@@ -2,10 +2,52 @@
 using UELib.Core;
 using UELib;
 using System.Text;
+using System.Reflection;
+using System.IO;
 namespace UELib.Engine
 {
+
+/*
+UE2 MATERIALS TREE:
+~~~~~~~~~~~~~~~~~~~
+-	Material
+-		Combiner
+-		Modifier
+			ColorModifier
+-			FinalBlend
+			MaterialSequence
+			MaterialSwitch
+			OpacityModifier
+-			TexModifier
+				TexCoordSource
+-				TexEnvMap
+				TexMatrix
+-				TexOscillator
+					TexOscillatorTriggered
+-				TexPanner
+					TexPannerTriggered
+-				TexRotator
+-				TexScaler
+				VariableTexPanner
+-		RenderedMaterial
+-			BitmapMaterial
+				ScriptedTexture
+				ShadowBitmapMaterial
+-				Texture
+					Cubemap
+-			ConstantMaterial
+-				ConstantColor
+				FadeColor
+			ParticleMaterial
+			ProjectorMaterial
+-			Shader
+			TerrainMaterial
+			VertexColor
+*/
     public class UMaterial : UObject 
     {
+        public FLineageShaderProperty ShaderProp;
+        public string ShaderCode;
         public class FLineageMaterialStageProperty : IUnrealSerializableClass
         {
             public string unk1;
@@ -81,7 +123,6 @@ namespace UELib.Engine
                     }
                 }
                 stream.Read(be, 0, 8);
-                //for (int i = 0; i < 8; i++) be[i] = stream.ReadByte();
                 for (int i = 0; i < 3; i++) ie[i] = stream.ReadInt32();
                 Stages = new UArray<FLineageMaterialStageProperty>();
                 Stages.Deserialize(stream);
@@ -92,77 +133,126 @@ namespace UELib.Engine
             base.Deserialize();
             if (Package.Build == UnrealPackage.GameBuild.BuildName.Lineage2) {
                 if (Package.Version >= 123 && Package.LicenseeVersion >= 16 && Package.LicenseeVersion < 37) {
-                    Buffer.ReadInt32();
+                    _Buffer.ReadInt32();
                 }
                 if (Package.Version >= 123 && Package.LicenseeVersion >= 30 && Package.LicenseeVersion < 37)
                 {
                     byte MaterialInfo, TextureTranform, MAX_SAMPLER_NUM, MAX_TEXMAT_NUM, MAX_PASS_NUM, TwoPassRenderState, AlphaRef;
                     if (Package.LicenseeVersion >= 33 && Package.LicenseeVersion < 36)
                     {
-                        MaterialInfo = Buffer.ReadByte();
+                        MaterialInfo = _Buffer.ReadByte();
                     }
-                    TextureTranform = Buffer.ReadByte();
-                    MAX_SAMPLER_NUM = Buffer.ReadByte();
-                    MAX_TEXMAT_NUM = Buffer.ReadByte();
-                    MAX_PASS_NUM = Buffer.ReadByte();
-                    TwoPassRenderState = Buffer.ReadByte();
-                    AlphaRef = Buffer.ReadByte();
+                    TextureTranform = _Buffer.ReadByte();
+                    MAX_SAMPLER_NUM = _Buffer.ReadByte();
+                    MAX_TEXMAT_NUM = _Buffer.ReadByte();
+                    MAX_PASS_NUM = _Buffer.ReadByte();
+                    TwoPassRenderState = _Buffer.ReadByte();
+                    AlphaRef = _Buffer.ReadByte();
                     int SrcBlend, DestBlend, OverriddenFogColor;
-                    SrcBlend = Buffer.ReadInt32();
-                    DestBlend = Buffer.ReadInt32();
-                    OverriddenFogColor = Buffer.ReadInt32();
+                    SrcBlend = _Buffer.ReadInt32();
+                    DestBlend = _Buffer.ReadInt32();
+                    OverriddenFogColor = _Buffer.ReadInt32();
                     for (int i = 0; i < 8; i++)
                     {
                         byte b1, b2;
-                        b1 = Buffer.ReadByte();
-                        if (Package.LicenseeVersion < 36) b2 = Buffer.ReadByte(); ;
+                        b1 = _Buffer.ReadByte();
+                        if (Package.LicenseeVersion < 36) b2 = _Buffer.ReadByte(); ;
                         for (int j = 0; j < 126; j++)
                         {
-                            // really, 1Kb of floats and ints ...
                             byte b3;
-                            b3 = Buffer.ReadByte(); 
+                            b3 = _Buffer.ReadByte(); 
                         }
                     }
                     // another nested function - serialize FC_* variables
-				    byte[] c =new byte[8];					// union with "int FC_Color1, FC_Color2" (strange byte order)
-				     c[2] =Buffer.ReadByte();
-                     c[1] = Buffer.ReadByte();
-                     c[0] = Buffer.ReadByte();
-                     c[3] = Buffer.ReadByte();
-                     c[6] = Buffer.ReadByte();
-                     c[5] = Buffer.ReadByte();
-                     c[4] = Buffer.ReadByte();
-                     c[7] = Buffer.ReadByte();
+				    byte[] c =new byte[8];
+                    c[2] = _Buffer.ReadByte();
+                    c[1] = _Buffer.ReadByte();
+                    c[0] = _Buffer.ReadByte();
+                    c[3] = _Buffer.ReadByte();
+                    c[6] = _Buffer.ReadByte();
+                    c[5] = _Buffer.ReadByte();
+                    c[4] = _Buffer.ReadByte();
+                    c[7] = _Buffer.ReadByte();
 
-                     int FC_FadePeriod, FC_FadePhase, FC_ColorFadeType;	// really, floats?
-                     FC_FadePeriod = Buffer.ReadInt32();
-                     FC_FadePhase = Buffer.ReadInt32();
-                     FC_ColorFadeType = Buffer.ReadInt32();
+                     int FC_FadePeriod, FC_FadePhase, FC_ColorFadeType;
+                     FC_FadePeriod = _Buffer.ReadInt32();
+                     FC_FadePhase = _Buffer.ReadInt32();
+                     FC_ColorFadeType = _Buffer.ReadInt32();
                      for (int i = 0; i < 16; i++)
                      {
-                         string strTex;			// strTex[16]
-                         strTex = Buffer.ReadText();
-                         Console.WriteLine(strTex);
+                         string strTex;
+                         strTex = _Buffer.ReadText();
                      }
                      string ShaderCode;
-                     ShaderCode = Buffer.ReadText();
-                     Console.WriteLine(ShaderCode);
+                     ShaderCode = _Buffer.ReadText();
                 }
                 if (Package.Version >= 123 && Package.LicenseeVersion >= 37)
                 {
                     // ShaderProperty + ShaderCode
-                    FLineageShaderProperty ShaderProp;
-                     string ShaderCode;
-                     ShaderProp= new FLineageShaderProperty(Buffer);
-                     ShaderCode = Buffer.ReadText();
+                     ShaderProp = new FLineageShaderProperty(_Buffer);
+                     ShaderCode = _Buffer.ReadText();
                  }
                 if (Package.Version >= 123 && Package.LicenseeVersion >= 31)
                 {
                     short ver1, ver2;			// 'int MaterialCodeVersion' serialized as 2 words
-                    ver1= Buffer.ReadInt16();
-                    ver2= Buffer.ReadInt16();
+                    ver1 = _Buffer.ReadInt16();
+                    ver2 = _Buffer.ReadInt16();
                 }
              }
+        }
+    }
+    public class URenderedMaterial : UMaterial
+    {
+    }
+    public class UBitmapMaterial : URenderedMaterial
+    {
+        public byte UBits { get; set; }
+        public byte VBits { get; set; }	// texture size log2 (number of bits in size value)
+        public int USize { get; set; }
+        public int VSize { get; set; }
+        public int UClamp { get; set; }
+        public int VClamp { get; set; }
+        public ETextureFormat Format;
+        protected override void Deserialize()
+        {
+            base.Deserialize();
+            long pos = _Buffer.Position;
+            foreach (UDefaultProperty property in Properties)
+            {
+                string propertyVal = property.Decompile();
+
+                var kv = propertyVal.Split(new char[] { '=' }, StringSplitOptions.RemoveEmptyEntries);
+                if (property.Name == "Format")
+                {
+                    Format = (ETextureFormat)Convert.ToInt32(kv[1]);
+                }
+                else
+                {
+                    SetValue(kv[0], kv[1]);
+                }
+            }
+            _Buffer.Seek(pos, SeekOrigin.Begin);
+
+        }
+        // probably not a bad idea to make extension to UObject
+        public void SetValue(string propertyName, object propertyVal)
+        {
+            Type type = this.GetType();
+
+            PropertyInfo propertyInfo = type.GetProperty(propertyName);
+            if (propertyInfo == null)
+            {
+                return;
+            }
+            Type propertyType = propertyInfo.PropertyType;
+            var targetType = IsNullableType(propertyInfo.PropertyType) ? Nullable.GetUnderlyingType(propertyInfo.PropertyType) : propertyInfo.PropertyType;
+            propertyVal = Convert.ChangeType(propertyVal, targetType);
+            propertyInfo.SetValue(this, propertyVal, null);
+
+        }
+        private static bool IsNullableType(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>));
         }
     }
 }

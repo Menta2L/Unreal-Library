@@ -24,14 +24,40 @@ Once referenced, you can start using the library by using the namespace UELib as
 
 See further instructions at: https://github.com/EliotVU/Unreal-Library/wiki/Usage
 
+Interface
+==============
+
+Common sense tells me you'd like to test UE Library using an interface, luckily you can use the latest version of UE Explorer to use your latest build of Eliot.UELib.dll by replacing the file in the installed folder of UE Explorer e.g.
+
+    "%programfiles(x86)%\Eliot\UE Explorer\"
+  
+Grab the latest [UE-Explorer.1.2.7.0.rar](http://eliotvu.com/updates/UE-Explorer.1.2.7.0.rar) and replace Eliot.UELib.dll with yours, I recommend that you change the output path to your installation folder of UE Explorer.
+
+How-To
+==============
+[Adding support for new Unreal classes](https://github.com/EliotVU/Unreal-Library/wiki/Adding-support-for-new-Unreal-classes) 
+
 Contribute
 ==============
 
-Feel free to fill in an issue to request documentation for a specific feature. Or contribute missing documentation by editing this file.
+To contribute click the [fork button at the top right](https://help.github.com/articles/fork-a-repo/) and follow it by cloning your fork of this repository.
 
-TODO
+This project uses Visual Studio for development, while it is not restricted to Visual Studio it is recommended to use VS because it has the best support for C#, you can get Visual Studio from http://www.visualstudio.com/ for free, if you already have Visual Studio, it should be atleast Visual Studio 2010+.
+
+The following kind of contributions are welcome:
+* Any bug fix or issue as reported under "issues" on this github repository.
+* Support for a new game.
+* Support for decompression, and/or decryption.
+* Documentation on how to use this library.
+* General improvements in the decompilation output. 
+* Mono compatibility.
+
+Code style
 ==============
-* Re-organize and rename most of the files.
-* Decompress LZO .upk files.
-* Full UE4 Support.
-* Make it Mono compatible.
+
+Any contribution should follow the styling of the current code style as seen in the source files:
+* 4 indentation spaces.
+* _CamelCase for private/protected fields.
+* CamelCase naming for everything else but constants which use CAMEL_CASE.
+* Keep code lines readable by using spaces and new lines as a way of grouping code statements.
+* It is too much to mention every restriction here, so it is best to match the style of the nearby code.

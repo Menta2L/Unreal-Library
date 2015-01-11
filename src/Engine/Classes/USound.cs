@@ -17,6 +17,11 @@ namespace UELib.Engine
 
         private byte[] _SoundBuffer;
 
+        public byte[] SoundBuffer
+        {
+            get { return _SoundBuffer; }
+        }
+
         public USound()
         {
             ShouldDeserializeOnDemand = true;

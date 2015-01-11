@@ -1,7 +1,6 @@
 ﻿using System;
 using UELib.Core;
 using UELib;
-
 namespace UELib.Engine
 {
     public enum ETextureFormat

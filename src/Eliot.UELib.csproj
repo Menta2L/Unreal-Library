@@ -160,12 +160,10 @@
     <Compile Include="Core\Classes\UClassDecompiler.cs" />
     <Compile Include="Core\Classes\UComponent.cs" />
     <Compile Include="ByteCodeDecompiler.cs" />
-    <Compile Include="Decoding\LineageDecoder.cs" />
-    <Compile Include="Engine\Classes\UBitmapMaterial.cs" />
-    <Compile Include="Engine\Classes\URenderedMaterial.cs" />
     <Compile Include="Engine\Classes\UMaterial.cs" />
     <Compile Include="Engine\Classes\UPalette.cs" />
     <Compile Include="Decoding\IBufferDecoder.cs" />
+    <Compile Include="Engine\Classes\UStaticMesh.cs" />
     <Compile Include="ObjectNodes.cs" />
     <Compile Include="Core\Types\UArray.cs" />
     <Compile Include="Core\Classes\UScriptStruct.cs" />
